@@ -1,5 +1,5 @@
 package internal
 
-func normalizeURL(inputURL string) (string, error) {
+func NormalizeURL(inputURL string) (string, error) {
 	return "", nil
 }
