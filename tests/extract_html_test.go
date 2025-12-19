@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/datsun80zx/webscrpr.git/internal"
@@ -73,5 +75,252 @@ func TestGetFirstParagraphFromHTML(t *testing.T) {
 				t.Errorf("Test %v - %s FAIL: expected paragraph: %v\nactual: %v", i, tc.name, tc.expected, actual)
 			}
 		})
+	}
+}
+
+func TestGetURLsFromHTMLAbsolute(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><a href="https://blog.boot.dev/articles">Articles</a></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetURLsFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://blog.boot.dev/articles"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetURLsFromHTMLRelative(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><a href="/about">About</a></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetURLsFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://blog.boot.dev/about"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetURLsFromHTMLMultipleLinks(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body>
+		<a href="/home">Home</a>
+		<a href="/about">About</a>
+		<a href="https://example.com/external">External</a>
+	</body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetURLsFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{
+		"https://blog.boot.dev/home",
+		"https://blog.boot.dev/about",
+		"https://example.com/external",
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetURLsFromHTMLNoLinks(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><p>No links here</p></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetURLsFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetURLsFromHTMLNestedContent(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><a href="/posts"><span><strong>Blog Posts</strong></span></a></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetURLsFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://blog.boot.dev/posts"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetImagesFromHTMLAbsolute(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><img src="https://blog.boot.dev/logo.png" alt="Logo"></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetImagesFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://blog.boot.dev/logo.png"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetImagesFromHTMLRelative(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><img src="/images/logo.png" alt="Logo"></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetImagesFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://blog.boot.dev/images/logo.png"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetImagesFromHTMLMultiple(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body>
+		<img src="/header.png" alt="Header">
+		<img src="/content.jpg" alt="Content">
+		<img src="https://cdn.example.com/external.gif" alt="External">
+	</body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetImagesFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{
+		"https://blog.boot.dev/header.png",
+		"https://blog.boot.dev/content.jpg",
+		"https://cdn.example.com/external.gif",
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetImagesFromHTMLNoImages(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><p>No images here</p></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetImagesFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetImagesFromHTMLMissingAlt(t *testing.T) {
+	inputURL := "https://blog.boot.dev"
+	inputBody := `<html><body><img src="/logo.png"></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetImagesFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://blog.boot.dev/logo.png"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestGetImagesFromHTMLRelativeNoDash(t *testing.T) {
+	inputURL := "https://blog.boot.dev/posts/"
+	inputBody := `<html><body><img src="thumbnail.png" alt="Thumb"></body></html>`
+
+	baseURL, err := url.Parse(inputURL)
+	if err != nil {
+		t.Errorf("couldn't parse input URL: %v", err)
+		return
+	}
+
+	actual, err := internal.GetImagesFromHTML(inputBody, baseURL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"https://blog.boot.dev/posts/thumbnail.png"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
 	}
 }
